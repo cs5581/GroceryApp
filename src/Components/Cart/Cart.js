@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Fragment } from "react";
 import classes from "./Cart.module.css";
 import Modal from "../UI/Modal";
 import { useContext, useState } from "react";
@@ -13,6 +13,8 @@ const Cart = (props) => {
   const totalAmount = `$${cartCTX.totalAmount.toFixed(2)}`;
   const hasItems = cartCTX.items.length > 0;
   const [isReadyToCheckout, setIsReadyToCheckout] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [didSubmit, setDidSubmit] = useState(false);
 
   /* <Routes>
   <Route
@@ -31,9 +33,27 @@ const Cart = (props) => {
   const onOrderHandler = () => {
     setIsReadyToCheckout(true);
   };
+
   //const redirectionPlaceOrderHandler = () => {
   //navigate("../Pages/PlaceOrderScreen/");
   //};
+
+  const submitOrderHandler = async (userData) => {
+    setIsSubmitting(true);
+    await fetch(
+      "https://groceryapp-88b25-default-rtdb.firebaseio.com/order.json",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          user: userData,
+          orderItems: cartCTX.items,
+        }),
+      }
+    );
+    setDidSubmit(true);
+    setIsSubmitting(false);
+    cartCTX.clearCart();
+  };
 
   const cartItems = (
     <ul className={classes["cart-items"]}>
@@ -63,15 +83,45 @@ const Cart = (props) => {
     </div>
   );
 
-  return (
-    <Modal onDisengage={props.onDisengage}>
+  const modalNotSubmitted = (
+    <Fragment>
       {cartItems}
       <div className={classes.total}>
         <span>Total Amount</span>
         <span>{totalAmount}</span>
       </div>
-      {isReadyToCheckout && <Checkout onCancel={props.onDisengage} />}
+      {isReadyToCheckout && (
+        <Checkout
+          onSubmitOrder={submitOrderHandler}
+          onCancel={props.onDisengage}
+        />
+      )}
       {!isReadyToCheckout && modalActions}
+    </Fragment>
+  );
+
+  const didSubmitUI = (
+    <Fragment>
+      Sucessfully submited order..
+      <div className={classes.actions}>
+        <button className={classes.button} onClick={props.onDisengage}>
+          Close
+        </button>
+      </div>
+    </Fragment>
+  );
+
+  const loadingSubmitUI = (
+    <Fragment>
+      <h1>Submitting order.. Please wait</h1>
+    </Fragment>
+  );
+
+  return (
+    <Modal onDisengage={props.onDisengage}>
+      {!isSubmitting && !didSubmit && modalNotSubmitted}
+      {didSubmit && didSubmitUI}
+      {isSubmitting && !didSubmit && loadingSubmitUI}
     </Modal>
   );
 };
